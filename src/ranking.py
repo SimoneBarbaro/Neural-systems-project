@@ -120,7 +120,7 @@ class Bm25HybridRanker(Ranker):
         Implementation of the abstract method.
         """
         selected_doc_ids = self.filter.filter(query)
-        return Bm25Ranker(self.tokenized_corpus[selected_doc_ids], self.tokenizer_fn).score_query(query)
+        return Bm25Ranker(np.array(self.tokenized_corpus)[selected_doc_ids], lambda x: x).score_query(query)
 
 
 class Sent2VecHybridRanker(Sent2VecRanker):
