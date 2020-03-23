@@ -15,7 +15,7 @@ def ml_score(real_query_ids, prediction_ids, L):
 
     xs = []
     for x in prediction_ids:
-        xs.append(np.pad(x, (0, L - len(x)), constant_values=-1, ))
+        xs.append(np.pad(x, (0, max(L - len(x), 0)), constant_values=-1, )[:L])
     prediction_ids = np.array(xs)
 
     prediction_ids = np.array(prediction_ids)

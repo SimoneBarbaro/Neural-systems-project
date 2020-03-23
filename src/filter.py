@@ -1,5 +1,5 @@
 import numpy as np
-from keyword_selection import InvertedIndex, KeywordSelector
+from keyword_selection import InvertedIndex, KeywordSelector, TfidfKeywordScorer, SelectKKeywordSelector
 from functools import reduce
 
 
@@ -39,7 +39,7 @@ class OrFilterStrategy(FilterStrategy):
 
 class CorpusFilter:
     """
-    Base class to filter corpus based on keyword methods.
+    Corpus filter that uses strategies injected in the init method to personalize how the filtering is done.
     """
     def __init__(self, corpus, preprocessing_fn, keyword_selector: KeywordSelector, filter_strategy: FilterStrategy):
         """
@@ -55,15 +55,6 @@ class CorpusFilter:
         self.keyword_selector = keyword_selector
         self.filter_strategy = filter_strategy
 
-    def selection_strategy(self, tokens):
-        """
-        Abstract method where the logic of how to choose keys, this can call different methods of keyword_selector.
-        There are many possible solutions and the best must be found with experimentation.
-        :param tokens: tokens from which to select the keywords.
-        :return: a list of keywords
-        """
-        raise NotImplementedError
-
     def filter(self, query):
         """
         Method called to return a subset of document ids, filtered accordingly to a specific query.
@@ -71,19 +62,65 @@ class CorpusFilter:
         :return: a list of document ids.
         """
         tokens = self.preprocessing_fn(query)
-        selected_keywords = self.selection_strategy(tokens)
+        selected_keywords = self.keyword_selector.select_keywords(tokens)
         selected_doc_ids = self.inverted_index.get_doc_id_list(selected_keywords)
         return self.filter_strategy.filter_selection(selected_doc_ids)
 
 
-class SelectKCorpusFilter(CorpusFilter):
-    """
-    Simple corpus filter that select at most k keywords based on the keyword scorer where k is given as input.
-    """
-    def __init__(self, corpus, preprocessing_fn, keyword_selector: KeywordSelector, filter_strategy: FilterStrategy, k):
-        super().__init__(corpus, preprocessing_fn, keyword_selector, filter_strategy)
-        self.k = k
+class CorpusFilterBuilder:
+    def __init__(self, corpus, preprocessing_fn=lambda x: x.split()):
+        self.corpus = corpus
+        self.preprocessing_fn = preprocessing_fn
+        self.filter_strategy = OrFilterStrategy()
+        self.inverted_index = InvertedIndex(self.corpus, self.preprocessing_fn)
+        self.keyword_scorer = None
+        self.keyword_selector = None
 
-    def selection_strategy(self, tokens):
-        return self.keyword_selector.select_k(tokens, self.k)
+    def set_filter_strategy(self, filter_strategy):
+        """
+        Set the filter strategy to the specified in input.
+        Use it only if you want to use a different strategy from the default OrFilterStrategy
+        :param filter_strategy: a filter strategy.
+        """
+        self.filter_strategy = filter_strategy
+        return self
 
+    def changed_scorer(self):
+        """
+        Internal method called to reset the selector when the scorer is set.
+        """
+        self.keyword_selector = None
+
+    def check_and_set_default_scorer(self):
+        """
+        Check whether the scorer is set and if not set to default scorer.
+        """
+        if self.keyword_scorer is None:
+            self.set_tf_idf_keyword_scorer()
+
+    def set_tf_idf_keyword_scorer(self):
+        """
+        Set the keyword scorer to the tf_idf scorer.
+        """
+        self.keyword_scorer = TfidfKeywordScorer(self.inverted_index, len(self.corpus))
+        return self
+
+    def set_k_keyword_selector(self, k):
+        """
+        Set the keyword selector to the SelectKKeywordSelector selector for a given k.
+        If no scorer is selected before calling this method, the if_idf scorer will be selected by default.
+        :param k: the maximum number of keywords selected by the selector.
+        """
+        self.check_and_set_default_scorer()
+        self.keyword_selector = SelectKKeywordSelector(self.keyword_scorer, k)
+        return self
+
+    def build(self):
+        """
+        Create the final filter. If the keyword selector is not set it raise an exemption.
+        The selector must be manually build for now because a default selector has not been chosen.
+        :return: the built filter.
+        """
+        if self.keyword_selector is None:
+            raise Exception("Keyword selector not chosen, cannot build")
+        return CorpusFilter(self.corpus, self.preprocessing_fn, self.keyword_selector, self.filter_strategy)

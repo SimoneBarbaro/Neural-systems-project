@@ -121,14 +121,29 @@ class KeywordSelector:
         """
         self.scorer = keyword_scorer
 
-    def select_k(self, tokenized_query, k):
+    def select_keywords(self, tokenized_query):
         """
-        Simple strategy that select a fixed number of keywords taken by decreasing score.
+        Abstract method for selecting keywords given a tokeinzed query.
         :param tokenized_query: a list ok tokens.
-        :param k: number of keys to be selected.
         :return: a list of the tokens selected from the input.
+        """
+        raise NotImplementedError
+
+
+class SelectKKeywordSelector(KeywordSelector):
+    """
+    Simple strategy that select a fixed number of keywords taken by decreasing score.
+    """
+
+    def __init__(self, keyword_scorer: KeywordScorer, k):
+        super().__init__(keyword_scorer)
+        self.k = k
+
+    def select_keywords(self, tokenized_query):
+        """
+        Implementation of the abstract method.
         """
         unique_token_occurance = get_unique_token_occurrences(tokenized_query)
         unique_token_list = list(unique_token_occurance.keys())
-        selected_token_ids = np.argsort(-self.scorer.score_keywords(tokenized_query))[:k]
+        selected_token_ids = np.argsort(-np.array(self.scorer.score_keywords(tokenized_query)))[:self.k]
         return [unique_token_list[idx] for idx in selected_token_ids]
