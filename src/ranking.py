@@ -9,6 +9,7 @@ class Ranker:
     Abstract class that rank documents based on a given query.
     The scoring strategy is left not implemented while different utility methods are implemented to avoid replication.
     """
+
     def score_query(self, query):
         """
         Score corpus based on a given query.
@@ -43,6 +44,7 @@ class Bm25Ranker(Ranker):
     """
     Ranker based on the BM25 model.
     """
+
     def __init__(self, corpus, tokenizer_fn):
         """
         :param corpus: corpus of documents.
@@ -63,6 +65,7 @@ class Sent2VecRanker(Ranker):
     """
     Ranker based on the Sent2Vec model.
     """
+
     def __init__(self, corpus):
         """
         :param corpus: corpus of documents.
@@ -101,41 +104,71 @@ class Sent2VecRanker(Ranker):
         return np.dot(self.doc_embeddings, query_embedding[0])
 
 
-class Bm25HybridRanker(Ranker):
+class HybridRanker(Ranker):
+    """
+    Abstract Hybrid ranker.
+    """
+
+    def __init__(self, corpus, corpus_filter: CorpusFilter):
+        """
+        :param corpus: corpus of documents.
+        :param corpus_filter: filter of corpus based on keywords.
+        """
+        self.corpus = corpus
+        self.filter = corpus_filter
+
+    def score_selected(self, query, selected_doc_ids):
+        raise NotImplementedError
+
+    def score_query(self, query):
+        """
+        Implementation of the abstract method.
+        """
+        selected_doc_ids = self.filter.filter(query)
+
+        selected_scores = self.score_selected(query, selected_doc_ids)
+
+        scores = np.zeros(len(self.corpus))
+        if len(selected_doc_ids) > 0:
+            scores[selected_doc_ids] = selected_scores
+        return scores
+
+
+class Bm25HybridRanker(HybridRanker):
     """
     Hybrid version of the ranker based on the BM25 model.
     """
+
     def __init__(self, corpus, corpus_filter: CorpusFilter, tokenizer_fn):
         """
         :param corpus: corpus of documents.
         :param tokenizer_fn: tokenizer function to extract tokens from the documents and the queries.
         :param corpus_filter: filter of corpus based on keywords.
         """
+        super().__init__(corpus, corpus_filter)
         self.tokenizer_fn = tokenizer_fn
-        self.tokenized_corpus = [tokenizer_fn(doc) for doc in corpus]
-        self.filter = corpus_filter
 
-    def score_query(self, query):
-        """
-        Implementation of the abstract method.
-        """
-        selected_doc_ids = self.filter.filter(query)
-        return Bm25Ranker(np.array(self.tokenized_corpus)[selected_doc_ids], lambda x: x).score_query(query)
+    def score_selected(self, query, selected_doc_ids):
+        if len(selected_doc_ids) == 0:
+            return Bm25Ranker(self.corpus, self.tokenizer_fn).score_query(query)
+        return Bm25Ranker(np.array(self.corpus)[selected_doc_ids], self.tokenizer_fn).score_query(query)
 
 
-class Sent2VecHybridRanker(Sent2VecRanker):
+class Sent2VecHybridRanker(HybridRanker, Sent2VecRanker):
     def __init__(self, corpus, corpus_filter: CorpusFilter):
         """
         :param corpus: corpus of documents.
         :param corpus_filter: filter of corpus based on keywords.
         """
-        super().__init__(corpus)
-        self.filter = corpus_filter
+        Sent2VecRanker.__init__(self, corpus)
+        HybridRanker.__init__(self, corpus, corpus_filter)
+
+    def score_selected(self, query, selected_doc_ids):
+        query_embedding = self.get_normalized_embedding(query)
+        return np.dot(self.doc_embeddings[selected_doc_ids, :], query_embedding[0])
 
     def score_query(self, query):
         """
         Implementation of the abstract method.
         """
-        selected_doc_ids = self.filter.filter(query)
-        query_embedding = self.get_normalized_embedding(query)
-        return np.dot(self.doc_embeddings[selected_doc_ids, :], query_embedding[0])
+        return HybridRanker.score_query(self, query)
