@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import rouge
 
 
 def ml_score(real_query_ids, prediction_ids, L):
@@ -57,3 +58,51 @@ def plot_ml_histograms(real_query_ids, prediction_ids, max_l=20):
             rank_order_list.append(np.argwhere(real_query_ids[idx] == prediction_ids[idx])[0, 0])
     plt.hist(rank_order_list, bins=max_l)
     plt.show()
+
+
+def rouge_score(dataset, real_query_ids, predictions_ids, aggregator='Avg', metrics=None):
+    """
+    :param dataset: cleaned dataset containing abstracts.
+    :param real_query_ids: true results for a given query.
+    :param predictions_ids: predicted results. Array with the first dimension equal to the length of real_query_ids.
+    prediction_ids[i, :] contains the sorted predictions by decreasing score.
+    :param aggregator: aggregator type for multiple queries and predictions, default 'Avg'
+    :param metrics: list rouge metrics to compute, default ['rouge-n', 'rouge-l', 'rouge-w']
+    :return: tuple (abstract_scores, title_scores), each is a dictionary containing rouge scores.
+    """
+    assert aggregator in ['Avg', 'Best', 'Individual'], 'Incorrect aggregator.'
+    apply_avg = apply_best = False
+    if aggregator == 'Avg':
+        apply_avg = True
+    elif aggregator == 'Best':
+        apply_best = True
+
+    if metrics is None:
+        metrics = ['rouge-n', 'rouge-l', 'rouge-w']
+
+    evaluator = rouge.Rouge(metrics=metrics, max_n=2, limit_length=False, stemming=False, apply_avg=apply_avg,
+                            apply_best=apply_best)
+
+    query_abstracts = [dataset[i][1] for i in real_query_ids]
+    predictions_abstracts = [dataset[i][1] for i in predictions_ids]
+
+    query_titles = [dataset[i][0] for i in real_query_ids]
+    predictions_titles = [dataset[i][0] for i in predictions_ids]
+
+    abstract_scores = evaluator.get_scores(predictions_abstracts, query_abstracts)
+    title_scores = evaluator.get_scores(predictions_titles, query_titles)
+
+    return abstract_scores, title_scores
+
+
+def print_rouge_score(scores):
+    """
+    :param scores: dictionary of rouge scores from rouge_score
+    :return:
+    """
+    for metric, results in sorted(scores.items(), key=lambda x: x[0]):
+        p = results['p']
+        r = results['r']
+        f = results['f']
+        print('\t{}:\t{}: {:5.2f}\t{}: {:5.2f}\t{}: {:5.2f}'
+              .format(metric, 'P', 100.0 * p, 'R', 100.0 * r, 'F1', 100.0 * f))
