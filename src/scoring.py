@@ -83,14 +83,24 @@ def rouge_score(dataset, real_query_ids, predictions_ids, aggregator='Avg', metr
     evaluator = rouge.Rouge(metrics=metrics, max_n=2, limit_length=False, stemming=False, apply_avg=apply_avg,
                             apply_best=apply_best)
 
-    query_abstracts = [dataset[i][1] for i in real_query_ids]
-    predictions_abstracts = [dataset[i][1] for i in predictions_ids]
+    if len(real_query_ids) == 1:
+        predictions_ids = [predictions_ids]
 
-    query_titles = [dataset[i][0] for i in real_query_ids]
-    predictions_titles = [dataset[i][0] for i in predictions_ids]
+    abstract_scores = []
+    title_scores = []
 
-    abstract_scores = evaluator.get_scores(predictions_abstracts, query_abstracts)
-    title_scores = evaluator.get_scores(predictions_titles, query_titles)
+    for id in real_query_ids:
+        query_abstracts = dataset[id][1]
+        predictions_abstracts = [dataset[i][1] for i in predictions_ids[id]]
+
+        query_titles = dataset[id][0]
+        predictions_titles = [dataset[i][0] for i in predictions_ids[id]]
+
+        abstract_score = evaluator.get_scores(query_abstracts, predictions_abstracts)
+        title_score = evaluator.get_scores(query_titles, predictions_titles)
+
+        abstract_scores.append(abstract_score)
+        title_scores.append(title_score)
 
     return abstract_scores, title_scores
 
