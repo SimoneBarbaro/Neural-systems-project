@@ -68,7 +68,7 @@ def rouge_score(dataset, real_query_ids, predictions_ids, aggregator='Avg', metr
     prediction_ids[i, :] contains the sorted predictions by decreasing score.
     :param aggregator: aggregator type for multiple queries and predictions, default 'Avg'
     :param metrics: list rouge metrics to compute, default ['rouge-n', 'rouge-l', 'rouge-w']
-    :return: tuple (abstract_scores, title_scores), each is a dictionary containing rouge scores.
+    :return: abstract_scores, is a dictionary containing rouge scores.
     """
     assert aggregator in ['Avg', 'Best', 'Individual'], 'Incorrect aggregator.'
     apply_avg = apply_best = False
@@ -87,22 +87,24 @@ def rouge_score(dataset, real_query_ids, predictions_ids, aggregator='Avg', metr
         predictions_ids = [predictions_ids]
 
     abstract_scores = []
-    title_scores = []
+    # title_scores = []
 
     for id in real_query_ids:
         query_abstracts = dataset[id][1]
         predictions_abstracts = [dataset[i][1] for i in predictions_ids[id]]
 
+        """
         query_titles = dataset[id][0]
         predictions_titles = [dataset[i][0] for i in predictions_ids[id]]
+        """
 
         abstract_score = evaluator.get_scores(query_abstracts, predictions_abstracts)
-        title_score = evaluator.get_scores(query_titles, predictions_titles)
+        # title_score = evaluator.get_scores(query_titles, predictions_titles)
 
         abstract_scores.append(abstract_score)
-        title_scores.append(title_score)
-
-    return abstract_scores, title_scores
+        # title_scores.append(title_score)
+    return abstract_scores
+    # return abstract_scores, title_scores
 
 
 def print_rouge_score(scores):
