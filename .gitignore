@@ -1,3 +1,4 @@
 .~lock.Text Retrieval using Natural Language Processing_v3_NEW.docx#
 src/__pycache__
 src/sent2vec_model.bin
+src/dataset.txt
