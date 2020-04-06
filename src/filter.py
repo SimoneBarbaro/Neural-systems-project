@@ -76,7 +76,7 @@ class CorpusFilterBuilder:
         self.keyword_scorer = None
         self.keyword_selector = None
 
-    def set_filter_strategy(self, filter_strategy):
+    def set_filter_strategy(self, filter_strategy: FilterStrategy):
         """
         Set the filter strategy to the specified in input.
         Use it only if you want to use a different strategy from the default OrFilterStrategy
