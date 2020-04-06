@@ -84,14 +84,14 @@ def filter_k_compare(ks, model_builder_fn, hybrid_model_builder_fn, filter_build
 def filter_k_or_compare(model_builder_fn, hybrid_model_builder_fn, plot=True, save=False, save_name="result"):
     filter_k_compare([3, 5, 7, 10], model_builder_fn, hybrid_model_builder_fn,
                      lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn).set_k_keyword_selector(
-                         3).build(), plot=plot, save=save, save_name=save_name)
+                         k).build(), plot=plot, save=save, save_name=save_name)
 
 
 def filter_k_and_compare(model_builder_fn, hybrid_model_builder_fn, plot=True, save=False, save_name="result"):
     filter_k_compare([3, 5, 7, 10], model_builder_fn, hybrid_model_builder_fn,
                      lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn)
                      .set_filter_strategy(AndFilterStrategy())
-                     .set_k_keyword_selector(3)
+                     .set_k_keyword_selector(k)
                      .build(), plot=plot, save=save, save_name=save_name)
 
 
