@@ -6,6 +6,7 @@ It's not very documented because I don't expect we would use it after visualizin
 import argparse
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from parsing import parse_exemple_file, get_dataset
 import nltk
@@ -31,6 +32,19 @@ def preprocessing():
     return queries, corpus, tokenizer_fn
 
 
+def save_compare(predictions, labels):
+    max_l = 20
+    real_query_ids = [i for i in range(len(predictions[0]))]
+    ml_scores = {}
+    for i, prediction_ids in enumerate(predictions):
+        ml_score_list = []
+        for l in range(1, max_l + 1):
+            ml_score_list.append(ml_score(real_query_ids, prediction_ids, l))
+        ml_scores[labels[i]] = ml_score_list
+
+    pd.DataFrame(ml_scores).transpose().to_csv("result.csv")
+
+
 def plot_compare(predictions, labels):
     max_l = 20
     real_query_ids = [i for i in range(len(predictions[0]))]
@@ -47,7 +61,7 @@ def plot_compare(predictions, labels):
     plt.show()
 
 
-def filter_k_compare(ks, model_builder_fn, hybrid_model_builder_fn, filter_builder_fn):
+def filter_k_compare(ks, model_builder_fn, hybrid_model_builder_fn, filter_builder_fn, plot=True, save=False):
     queries, corpus, tokenizer_fn = preprocessing()
 
     model = model_builder_fn(corpus, tokenizer_fn)
@@ -60,24 +74,27 @@ def filter_k_compare(ks, model_builder_fn, hybrid_model_builder_fn, filter_build
         model = hybrid_model_builder_fn(corpus, corpus_filter, tokenizer_fn)
         predictions.append(model.batch_knn_prediction(queries))
         labels.append("sent2vec_or_{}".format(k))
-    plot_compare(predictions, labels)
+    if save:
+        save_compare(predictions, labels)
+    if plot:
+        plot_compare(predictions, labels)
 
 
-def filter_k_or_compare(model_builder_fn, hybrid_model_builder_fn):
+def filter_k_or_compare(model_builder_fn, hybrid_model_builder_fn, plot=True, save=False):
     filter_k_compare([3, 5, 7, 10], model_builder_fn, hybrid_model_builder_fn,
                      lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn).set_k_keyword_selector(
-                         3).build())
+                         3).build(), plot=plot, save=save)
 
 
-def filter_k_and_compare(model_builder_fn, hybrid_model_builder_fn):
+def filter_k_and_compare(model_builder_fn, hybrid_model_builder_fn, plot=True, save=False):
     filter_k_compare([3, 5, 7, 10], model_builder_fn, hybrid_model_builder_fn,
                      lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn)
                      .set_filter_strategy(AndFilterStrategy())
                      .set_k_keyword_selector(3)
-                     .build())
+                     .build(), plot=plot, save=save)
 
 
-def simple_compare():
+def simple_compare(plot=True, save=False):
     queries, corpus, tokenizer_fn = preprocessing()
 
     bm25 = Bm25Ranker(corpus, tokenizer_fn)
@@ -97,12 +114,17 @@ def simple_compare():
                    bm25_hybrid_and.batch_knn_prediction(queries), sent2vec.batch_knn_prediction(queries),
                    sent2vec_hybrid_or.batch_knn_prediction(queries), sent2vec_hybrid_and.batch_knn_prediction(queries)]
     labels = ["bm25", "bm25_or_hybrid", "bm25_and_hybrid", "sent2vec", "sent2vec_or_hybrid", "sent2vec_and_hybrid"]
-    plot_compare(predictions, labels)
+    if save:
+        save_compare(predictions, labels)
+    if plot:
+        plot_compare(predictions, labels)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--types', type=str, nargs="+", required=True)
+    parser.add_argument('--save', type=bool, default=False)
+    parser.add_argument('--plot', type=bool, default=True)
 
     args = parser.parse_args()
 
@@ -125,15 +147,15 @@ if __name__ == '__main__':
 
     if "bm25_k_or" in args.types:
         print("bm25_k_or")
-        filter_k_and_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn)
+        filter_k_and_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn, plot=args.plot, save=args.save)
     if "bm25_k_and" in args.types:
         print("bm25_k_and")
-        filter_k_or_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn)
+        filter_k_or_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn, plot=args.plot, save=args.save)
     if "sent2vec_k_or" in args.types:
         print("sent2vec_k_or")
-        filter_k_and_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn)
+        filter_k_and_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn, plot=args.plot, save=args.save)
     if "sent2vec_k_and" in args.types:
         print("sent2vec_k_and")
-        filter_k_or_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn)
+        filter_k_or_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn, plot=args.plot, save=args.save)
     if "simple" in args.types:
-        simple_compare()
+        simple_compare(plot=args.plot, save=args.save)
