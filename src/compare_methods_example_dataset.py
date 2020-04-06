@@ -42,7 +42,7 @@ def save_compare(predictions, labels):
             ml_score_list.append(ml_score(real_query_ids, prediction_ids, l))
         ml_scores[labels[i]] = ml_score_list
 
-    pd.DataFrame(ml_scores).transpose().to_csv("result.csv")
+    pd.DataFrame(ml_scores, index=[l for l in range(1, max_l + 1)]).transpose().to_csv("result.csv")
 
 
 def plot_compare(predictions, labels):
