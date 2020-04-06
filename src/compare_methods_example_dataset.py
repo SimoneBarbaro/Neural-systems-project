@@ -1,3 +1,8 @@
+"""
+File to create comparative plots of different methods on the exemple dataset.
+It's not very documented because I don't expect we would use it after visualizing the comparisons.
+"""
+
 import argparse
 
 import numpy as np
@@ -49,6 +54,7 @@ def filter_k_compare(ks, model_builder_fn, hybrid_model_builder_fn, filter_build
     predictions = [model.batch_knn_prediction(queries)]
     labels = ["sent2vec"]
     for k in ks:
+        print("doing {}".format(k))
         corpus_filter = filter_builder_fn(corpus, tokenizer_fn, k)
 
         model = hybrid_model_builder_fn(corpus, corpus_filter, tokenizer_fn)
@@ -65,9 +71,9 @@ def filter_k_or_compare(model_builder_fn, hybrid_model_builder_fn):
 
 def filter_k_and_compare(model_builder_fn, hybrid_model_builder_fn):
     filter_k_compare([3, 5, 7, 10], model_builder_fn, hybrid_model_builder_fn,
-                     lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn) \
-                     .set_filter_strategy(AndFilterStrategy()) \
-                     .set_k_keyword_selector(3) \
+                     lambda corpus, tokenizer_fn, k: CorpusFilterBuilder(corpus, tokenizer_fn)
+                     .set_filter_strategy(AndFilterStrategy())
+                     .set_k_keyword_selector(3)
                      .build())
 
 
@@ -102,28 +108,32 @@ if __name__ == '__main__':
 
 
     def bm25_model_builder_fn(corpus, tokenizer_fn):
-        Bm25Ranker(corpus, tokenizer_fn)
+        return Bm25Ranker(corpus, tokenizer_fn)
 
 
     def sent2vec_model_builder_fn(corpus, tokenizer_fn):
-        Sent2VecRanker(corpus)
+        return Sent2VecRanker(corpus)
 
 
     def bm25_hybrid_model_builder_fn(corpus, corpus_filter, tokenizer_fn):
-        Bm25HybridRanker(corpus, corpus_filter, tokenizer_fn)
+        return Bm25HybridRanker(corpus, corpus_filter, tokenizer_fn)
 
 
     def sent2vec_hybrid_model_builder_fn(corpus, corpus_filter, tokenizer_fn):
-        Sent2VecHybridRanker(corpus, corpus_filter)
+        return Sent2VecHybridRanker(corpus, corpus_filter)
 
 
     if "bm25_k_or" in args.types:
+        print("bm25_k_or")
         filter_k_and_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn)
     if "bm25_k_and" in args.types:
+        print("bm25_k_and")
         filter_k_or_compare(bm25_model_builder_fn, bm25_hybrid_model_builder_fn)
     if "sent2vec_k_or" in args.types:
+        print("sent2vec_k_or")
         filter_k_and_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn)
     if "sent2vec_k_and" in args.types:
+        print("sent2vec_k_and")
         filter_k_or_compare(sent2vec_model_builder_fn, sent2vec_hybrid_model_builder_fn)
     if "simple" in args.types:
         simple_compare()
