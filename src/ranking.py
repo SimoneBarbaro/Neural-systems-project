@@ -2,6 +2,7 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 import sent2vec
 from filter import CorpusFilter
+from parsing import get_inverted_index_data
 
 
 class Ranker:
@@ -59,6 +60,46 @@ class Bm25Ranker(Ranker):
         Implementation of the abstract method.
         """
         return self.bm25.get_scores(self.tokenizer_fn(query))
+
+
+class FastBM25Ranker(Ranker):
+    def __init__(self, corpus, tokenizer_fn, k=1.2, b=0.75, require_tokenize=True):
+
+        # self.tokenizer = SentenceTokenizer()
+        self.tokenizer_fn = tokenizer_fn
+        self.k = k
+        self.b = b
+        self.require_tokenize = require_tokenize
+        inv_idx_data = get_inverted_index_data(corpus, tokenizer_fn)
+
+        self.inv_idx = inv_idx_data["inv_idx"]
+        self.index_to_doc_length_mapper = inv_idx_data["index_to_doc_length_mapper"]
+        self.num_of_docs = inv_idx_data["num_of_docs"]
+        idx_list = list(self.index_to_doc_length_mapper.keys())
+        assert np.min(idx_list) == 0 and np.max(idx_list) == len(idx_list) - 1
+        self.doc_lengths = np.array([self.index_to_doc_length_mapper[idx] for idx in range(len(idx_list))])
+        self.avg_doc_length = np.mean(self.doc_lengths)
+
+    def score_query(self, query):
+        if self.require_tokenize:
+            w_list = self.tokenizer_fn(query).split()
+        else:
+            w_list = query.split()
+        unique_words = {}
+        for w in w_list:
+            unique_words[w] = unique_words.get(w, 0) + 1
+        scores = np.zeros(self.num_of_docs, dtype=np.float32)
+        for w in unique_words:
+            if w not in self.inv_idx:
+                continue
+            Nw = len(self.inv_idx[w]["doc_indices"])
+            doc_length_w = self.doc_lengths[self.inv_idx[w]["doc_indices"]]
+            scores[self.inv_idx[w]["doc_indices"]] = scores[self.inv_idx[w]["doc_indices"]] + unique_words[w] * \
+                                                     self.inv_idx[w]["term_frequencies"] * (1 + self.k) / (
+                                                             self.inv_idx[w]["term_frequencies"] + self.k * (
+                                                             1 - self.b + self.b * doc_length_w / self.avg_doc_length)) * np.log(
+                1 + (self.num_of_docs - Nw + 0.5) / (Nw + 0.5))
+        return scores
 
 
 class Sent2VecRanker(Ranker):
@@ -152,6 +193,31 @@ class Bm25HybridRanker(HybridRanker):
         if len(selected_doc_ids) == 0:
             return Bm25Ranker(self.corpus, self.tokenizer_fn).score_query(query)
         return Bm25Ranker(np.array(self.corpus)[selected_doc_ids], self.tokenizer_fn).score_query(query)
+
+
+class FastBm25HybridRanker(HybridRanker):
+    """
+    Hybrid version of the ranker based on the BM25 model.
+    """
+
+    def __init__(self, corpus, corpus_filter: CorpusFilter, tokenizer_fn, k=1.2, b=0.75, require_tokenize=True):
+        """
+        :param corpus: corpus of documents.
+        :param tokenizer_fn: tokenizer function to extract tokens from the documents and the queries.
+        :param corpus_filter: filter of corpus based on keywords.
+        """
+        super().__init__(corpus, corpus_filter)
+        self.tokenizer_fn = tokenizer_fn
+        self.k = k
+        self.b = b
+        self.require_tokenize = require_tokenize
+
+    def score_selected(self, query, selected_doc_ids):
+        if len(selected_doc_ids) == 0:
+            return FastBM25Ranker(self.corpus, self.tokenizer_fn, k=self.k, b=self.b,
+                                  require_tokenize=self.require_tokenize).score_query(query)
+        return FastBM25Ranker(np.array(self.corpus)[selected_doc_ids], self.tokenizer_fn, k=self.k, b=self.b,
+                              require_tokenize=self.require_tokenize).score_query(query)
 
 
 class Sent2VecHybridRanker(HybridRanker, Sent2VecRanker):

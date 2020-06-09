@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.metrics import dcg_score, ndcg_score
 import rouge
 
 
@@ -42,6 +43,20 @@ def plot_ml_curve(real_query_ids, prediction_ids, max_l=20):
     plt.title("M@L score curve")
     plt.xticks(np.arange(1, max_l+1))
     plt.show()
+
+
+def discounted_cumulative_gain(query_ids, predicted_results, scores, normalize=True):
+    dcg = []
+    for i, query_id in enumerate(query_ids):
+        query_scores = scores[query_id]
+        relevant_scores = []
+        for result in predicted_results[i]:
+            relevant_scores.append(query_scores[result])
+        if normalize:
+            dcg.append(ndcg_score(np.array(relevant_scores), predicted_results))
+        else:
+            dcg.append(dcg_score(np.array(relevant_scores), predicted_results))
+    return dcg
 
 
 def plot_ml_histograms(real_query_ids, prediction_ids, max_l=20):
