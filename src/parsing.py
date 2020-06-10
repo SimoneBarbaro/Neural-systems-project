@@ -30,6 +30,20 @@ def get_dataset(df):
     return [[title, abstract] for title, abstract in zip(df.title, df.abstract)]
 
 
+def get_part2_datasets():
+    results = pd.read_csv("dataset/results.csv")
+    discussions = pd.read_csv("dataset/discussions.csv")
+    scores = pd.read_csv("dataset/scores.csv").drop_duplicates()
+    results = results.set_index(["doc_id", "result_id"]).sort_index()
+    discussions = discussions.set_index(["doc_id", "discussion_id"]).sort_index()
+    scores = scores.set_index(["doc_id_result", "result_id", "doc_id_discussion", "discussion_id"]).sort_index()
+    result_ids = scores.index.to_frame(False)["doc_id_result"].unique()
+    discussion_ids = scores.index.to_frame(False)["doc_id_discussion"].unique()
+    results = results.loc[result_ids]
+    discussions = discussions.loc[discussion_ids]
+    return results, discussions, scores
+
+
 class SentenceTokenizer:
     def __init__(self):
         self.tokenizer = RegexpTokenizer(r'\w+')
@@ -40,7 +54,7 @@ class SentenceTokenizer:
     def stem(self, w):
         return self.stemmer.stem(w)
 
-    def tokenize(self, sen, remove_stopwords=False):
+    def tokenize(self, sen, remove_stopwords=True):
         if remove_stopwords:
             sen = " ".join([w for w in sen.split() if w.lower() not in self.general_stopwords])
         wlist = self.tokenizer.tokenize(sen)
