@@ -82,7 +82,7 @@ class FastBM25Ranker(Ranker):
 
     def score_query(self, query):
         if self.require_tokenize:
-            w_list = self.tokenizer_fn(query).split()
+            w_list = self.tokenizer_fn(query)
         else:
             w_list = query.split()
         unique_words = {}

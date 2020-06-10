@@ -45,7 +45,7 @@ class SentenceTokenizer:
             sen = " ".join([w for w in sen.split() if w.lower() not in self.general_stopwords])
         wlist = self.tokenizer.tokenize(sen)
         sen = " ".join([self.stem(w.lower()) for w in wlist])
-        return sen
+        return sen.split()
 
 
 def add_unigram(inv_idx, index, doc_unigrams):
@@ -70,6 +70,7 @@ def get_doc_id_mapping(corpus_dataframe):
         index_to_id_mapper[index] = doc_id
         id_to_index_mapper[doc_id] = index
         index += 1
+    return index_to_id_mapper, id_to_index_mapper
 
 
 def get_inverted_index_data(corpus, tokenizer_fn):
@@ -79,8 +80,7 @@ def get_inverted_index_data(corpus, tokenizer_fn):
     index_to_doc_length_mapper = {}
 
     for text in corpus:
-        fulltext = tokenizer_fn(text.strip())
-        fulltext_words = fulltext.split()
+        fulltext_words = tokenizer_fn(text.strip())
         add_unigram(inv_idx, index, fulltext_words)
         index_to_doc_length_mapper[index] = len(fulltext_words)
 
