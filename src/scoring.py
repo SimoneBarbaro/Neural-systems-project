@@ -48,14 +48,14 @@ def plot_ml_curve(real_query_ids, prediction_ids, max_l=20):
 def discounted_cumulative_gain(query_ids, predicted_results, scores, normalize=True):
     dcg = []
     for i, query_id in enumerate(query_ids):
-        query_scores = scores[query_id]
+        query_scores = scores.loc[query_id]
         relevant_scores = []
         for result in predicted_results[i]:
-            relevant_scores.append(query_scores[result])
+            relevant_scores.append(query_scores["score"].get(result, 0))
         if normalize:
-            dcg.append(ndcg_score(np.array(relevant_scores), predicted_results))
+            dcg.append(ndcg_score(np.array([relevant_scores]), np.array([range(len(predicted_results[i]), 0, -1)])))
         else:
-            dcg.append(dcg_score(np.array(relevant_scores), predicted_results))
+            dcg.append(dcg_score(np.array([relevant_scores]), np.array([range(len(predicted_results[i]), 0, -1)])))
     return dcg
 
 
