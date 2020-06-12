@@ -44,6 +44,7 @@ def get_ranker(args, corpus):
 
 
 def test_pairing(args):
+    #TODO bugs to fix
     results, discussions, pairs = get_part2_datasets(only_pairs=True)
     doc_ids = results.index.unique(0)
     discussions_index_to_id_mapper, discussions_id_to_index_mapper = get_doc_id_mapping(discussions)
@@ -54,11 +55,11 @@ def test_pairing(args):
         queries = results.loc[doc_id]["text"].values
 
         for q in results.loc[doc_id].index:
-            real_query_ids.append(pairs[(doc_id, q)])
+            real_query_ids += pairs[(doc_id, q)]
         corpus = discussions.loc[doc_id]["text"].values
         ranker = get_ranker(args, corpus)
         indexes = ranker.batch_knn_prediction(queries, k=args.k)
-        predictions += [[discussions_index_to_id_mapper[res] for res in index] for index in indexes]
+        predictions += [[discussions_index_to_id_mapper[res][-1] for res in index] for index in indexes]
 
     print("M@1 score: {}".format(ml_score(real_query_ids, predictions, L=1)))
     print("M@20 score: {}".format(ml_score(real_query_ids, predictions, L=20)))
@@ -89,13 +90,12 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default="retrieval", help="k for knn prediction")
+    parser.add_argument("--mode", type=str, default="retrieval", help="testing mode", choices=["retrieval", "pairing"])
     parser.add_argument("--k", type=int, default=20, help="k for knn prediction")
     parser.add_argument("--ranker", type=str, default="FastBM25", help="ranker model",
                         choices=["BM25", "FastBM25", "Sent2Vec", "BM25Hybrid", "FastBM25Hybrid", "Sent2VecHybrid"])
     parser.add_argument("--filter", type=str, default=None, help="filtering method, None if not using hybrid ranker",
                         choices=[None, "and", "or"])
-    # parser.add_argument("--ranker_args", nargs="+", default=[], help="optionally, args for ranker")
     parser.add_argument("--tokenizer", type=str, default="SentenceTokenizer",
                         help="tokenizer to use, only some ranker will make use of this parameter",
                         choices=["SentenceTokenizer", "split"])
