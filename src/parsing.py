@@ -45,15 +45,16 @@ def get_part2_datasets(only_pairs=False):
         return results, discussions, scores
     else:
         pairs = pd.read_csv("dataset/pairs.csv")
+
+        #results = results.loc[pairs[["doc_id", "result_id"]].drop_duplicates().values].sort_index()
         pairs_map = {}
         for i, row in pairs.iterrows():
             key = row["doc_id"], row["result_id"]
-            if not pairs_map[key]:
+            if pairs_map.get(key, None) is None:
                 pairs_map[key] = []
-            pairs_map[key].append((row["doc_id"], row["discussion_id"]))
-
+            pairs_map[key].append(row["discussion_id"])
+        results = results[results.index.isin(pairs_map.keys())]
         return results, discussions, pairs_map
-
 
 
 class SentenceTokenizer:
