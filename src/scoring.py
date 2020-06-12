@@ -23,7 +23,10 @@ def ml_score(real_query_ids, prediction_ids, L):
     prediction_ids = np.array(prediction_ids)
     assert prediction_ids.shape[0] == real_query_ids.shape[0]
     assert prediction_ids.shape[1] >= L
-    return np.mean(np.any(prediction_ids[:, :L] == real_query_ids[:, np.newaxis], axis=-1))
+    if len(real_query_ids.shape) == 1:
+        return np.mean(np.any(prediction_ids[:, :L] == real_query_ids[:, np.newaxis], axis=-1))
+    else:
+        return np.mean(np.any(prediction_ids[:, :L] == real_query_ids, axis=-1))
 
 
 def plot_ml_curve(real_query_ids, prediction_ids, max_l=20):
