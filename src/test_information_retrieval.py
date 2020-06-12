@@ -36,7 +36,7 @@ def get_ranker(args, corpus):
     elif args.ranker == "FastBM25Hybrid":
         ranker = FastBm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter),
                                       get_tokenizer_fn(args.tokenizer))
-    elif args.ranker == "Sec2SecHybrid":
+    elif args.ranker == "Sent2VecHybrid":
         ranker = Sent2VecHybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter))
     else:
         raise NotImplementedError("Ranker not implemented yet")
