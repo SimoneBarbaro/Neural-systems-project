@@ -30,18 +30,30 @@ def get_dataset(df):
     return [[title, abstract] for title, abstract in zip(df.title, df.abstract)]
 
 
-def get_part2_datasets():
+def get_part2_datasets(only_pairs=False):
     results = pd.read_csv("dataset/results.csv")
     discussions = pd.read_csv("dataset/discussions.csv")
-    scores = pd.read_csv("dataset/scores.csv").drop_duplicates()
     results = results.set_index(["doc_id", "result_id"]).sort_index()
     discussions = discussions.set_index(["doc_id", "discussion_id"]).sort_index()
-    scores = scores.set_index(["doc_id_result", "result_id", "doc_id_discussion", "discussion_id"]).sort_index()
-    result_ids = scores.index.to_frame(False)["doc_id_result"].unique()
-    discussion_ids = scores.index.to_frame(False)["doc_id_discussion"].unique()
-    results = results.loc[result_ids]
-    discussions = discussions.loc[discussion_ids]
-    return results, discussions, scores
+    if not only_pairs:
+        scores = pd.read_csv("dataset/scores.csv").drop_duplicates()
+        scores = scores.set_index(["doc_id_result", "result_id", "doc_id_discussion", "discussion_id"]).sort_index()
+        result_ids = scores.index.to_frame(False)["doc_id_result"].unique()
+        discussion_ids = scores.index.to_frame(False)["doc_id_discussion"].unique()
+        results = results.loc[result_ids]
+        discussions = discussions.loc[discussion_ids]
+        return results, discussions, scores
+    else:
+        pairs = pd.read_csv("dataset/pairs.csv")
+        pairs_map = {}
+        for i, row in pairs.iterrows():
+            key = row["doc_id"], row["result_id"]
+            if not pairs_map[key]:
+                pairs_map[key] = []
+            pairs_map[key].append((row["doc_id"], row["discussion_id"]))
+
+        return results, discussions, pairs_map
+
 
 
 class SentenceTokenizer:
