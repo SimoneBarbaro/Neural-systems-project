@@ -1,8 +1,9 @@
 import numpy as np
 import argparse
 from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer
-from src.ranking import Bm25Ranker, FastBM25Ranker, Sent2VecRanker, Sent2VecHybridRanker, Bm25HybridRanker, FastBm25HybridRanker
-from src.filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
+from ranking import Bm25Ranker, FastBM25Ranker, Sent2VecRanker, Sent2VecHybridRanker, Bm25HybridRanker, \
+    FastBm25HybridRanker
+from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
 from scoring import discounted_cumulative_gain
 
 
@@ -31,15 +32,15 @@ def main(args):
     if args.ranker == "BM25":
         ranker = Bm25Ranker(corpus, get_tokenizer_fn(args.tokenizer))
     elif args.ranker == "FastBM25":
-        ranker = FastBM25Ranker(corpus, get_tokenizer_fn(args.tokenizer), *args.ranker_args)
-    elif args.ranker == "Sec2Sec":
+        ranker = FastBM25Ranker(corpus, get_tokenizer_fn(args.tokenizer))
+    elif args.ranker == "Sent2Vec":
         ranker = Sent2VecRanker(corpus)
     elif args.ranker == "BM25Hybrid":
         ranker = Bm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter),
-                                get_tokenizer_fn(args.tokenizer))
+                                  get_tokenizer_fn(args.tokenizer))
     elif args.ranker == "FastBM25Hybrid":
         ranker = FastBm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter),
-                                    get_tokenizer_fn(args.tokenizer), *args.ranker_args)
+                                      get_tokenizer_fn(args.tokenizer))
     elif args.ranker == "Sec2SecHybrid":
         ranker = Sent2VecHybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter))
 
@@ -54,11 +55,11 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--k", type=int, default=20, help="k for knn prediction")
-    parser.add_argument("--ranker", type=str, default="FastBM25Ranker", help="ranker model",
-                        choices=["BM25", "FastBM25", "Sent2Vec"])
+    parser.add_argument("--ranker", type=str, default="FastBM25", help="ranker model",
+                        choices=["BM25", "FastBM25", "Sent2Vec", "BM25Hybrid", "FastBM25Hybrid", "Sec2SecHybrid"])
     parser.add_argument("--filter", type=str, default=None, help="filtering method, None if not using hybrid ranker",
                         choices=[None, "and", "or"])
-    parser.add_argument("--ranker_args", nargs="+", help="optionally, args for ranker")
+    # parser.add_argument("--ranker_args", nargs="+", default=[], help="optionally, args for ranker")
     parser.add_argument("--tokenizer", type=str, default="SentenceTokenizer",
                         help="tokenizer to use, only some ranker will make use of this parameter",
                         choices=["SentenceTokenizer", "split"])
