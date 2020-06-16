@@ -4,7 +4,8 @@ from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer
 from ranking import Bm25Ranker, FastBM25Ranker, Sent2VecRanker, Sent2VecHybridRanker, Bm25HybridRanker, \
     FastBm25HybridRanker
 from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
-from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve
+from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve, \
+    rouge_score, print_rouge_score
 
 
 def get_tokenizer_fn(tokenizer):
@@ -55,7 +56,7 @@ def test_pairing(args):
         queries = results.loc[doc_id]["text"].values
 
         for q in results.loc[doc_id].index:
-            real_query_ids += pairs[(doc_id, q)]
+            real_query_ids += [pairs[(doc_id, q)]]
         corpus = discussions.loc[doc_id]["text"].values
         ranker = get_ranker(args, corpus)
         indexes = ranker.batch_knn_prediction(queries, k=args.k)
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     parser.add_argument("--tokenizer", type=str, default="SentenceTokenizer",
                         help="tokenizer to use, only some ranker will make use of this parameter",
                         choices=["SentenceTokenizer", "split"])
+    parser.add_argument("--rouge", default=False, action='store_true')
 
     args = parser.parse_args()
 
