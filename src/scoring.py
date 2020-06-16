@@ -13,20 +13,24 @@ def ml_score(real_query_ids, prediction_ids, L):
     :param L: parameter for the metric, number of prediction considered.
     :return: M@L score.
     """
-    length = max(map(len, real_query_ids))
-    real_query_ids = np.array([xi + [None] * (length - len(xi)) for xi in real_query_ids])
+    if isinstance(real_query_ids[0], list):
+        length = max(map(len, real_query_ids))
+        real_query_ids = np.array([xi + [None] * (length - len(xi)) for xi in real_query_ids])
+    else:
+        real_query_ids = np.array(real_query_ids).reshape(1, -1)
 
     xs = []
-    for x in prediction_ids:
-        xs.append(np.pad(x, (0, max(L - len(x), 0)), constant_values=-1, )[:L])
+    if isinstance(prediction_ids[0], list):
+        for x in prediction_ids:
+            xs.append(np.pad(x, (0, max(L - len(x), 0)), constant_values=-1, )[:L])
+        prediction_ids = np.array(xs)
+    else:
+        prediction_ids = np.pad(prediction_ids, (0, max(L - len(prediction_ids), 0)), constant_values=-1, )[:L]
+        prediction_ids = prediction_ids.reshape(1, -1)
 
-    prediction_ids = np.array(xs)
     assert prediction_ids.shape[0] == real_query_ids.shape[0]
     assert prediction_ids.shape[1] >= L
-    if len(real_query_ids.shape) == 1:
-        return np.mean(np.any(prediction_ids[:, :L] == real_query_ids[:, np.newaxis], axis=-1))
-    else:
-        return np.sum([np.isin(prediction_ids[i, :L], real_query_ids[i, :]) for i in range(prediction_ids.shape[0])])\
+    return np.sum([np.isin(prediction_ids[i, :L], real_query_ids[i, :]) for i in range(prediction_ids.shape[0])])\
                / np.sum(real_query_ids != None)
 
 
@@ -79,7 +83,7 @@ def plot_ml_histograms(real_query_ids, prediction_ids, max_l=20):
     plt.show()
 
 
-def rouge_score(dataset, real_query_ids, predictions_ids, aggregator='Avg', metrics=None):
+def rouge_score(real_queries, predictions_ids, aggregator='Avg', metrics=None):
     """
     :param dataset: cleaned dataset containing abstracts.
     :param real_query_ids: true results for a given query.

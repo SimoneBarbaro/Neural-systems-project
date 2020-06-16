@@ -1,6 +1,6 @@
 import numpy as np
 from rank_bm25 import BM25Okapi
-import sent2vec
+#import sent2vec
 from filter import CorpusFilter
 from parsing import get_inverted_index_data
 
@@ -102,47 +102,47 @@ class FastBM25Ranker(Ranker):
         return scores
 
 
-class Sent2VecRanker(Ranker):
-    """
-    Ranker based on the Sent2Vec model.
-    """
-
-    def __init__(self, corpus):
-        """
-        :param corpus: corpus of documents.
-        """
-        self.doc_embeddings = []
-        self.model = sent2vec.Sent2vecModel()
-        self.model.load_model("sent2vec_model.bin")
-        for doc in corpus:
-            self.doc_embeddings.append(self.model.embed_sentence(doc))
-        self.doc_embeddings = np.concatenate(self.doc_embeddings, axis=0)
-        # In case that there are zero vectors in the embedding matrix,
-        # we only normalize the non-zero vectors in the embedding matrix
-        non_zero_indices = np.logical_not(np.all(self.doc_embeddings == 0, axis=1))
-        self.doc_embeddings[non_zero_indices] = self.doc_embeddings[non_zero_indices] / np.linalg.norm(
-            self.doc_embeddings[non_zero_indices], axis=1, keepdims=True)
-
-    def get_normalized_embedding(self, doc):
-        """
-        Helper method to create the embedding of a document and normalize it.
-        :param doc: input document.
-        :return: normalized embedding of the document.
-        """
-        doc_embedding = self.model.embed_sentence(doc)
-        # normalize the query embedding
-        if not np.all(doc_embedding == 0):
-            normalized_embedding = doc_embedding / np.linalg.norm(doc_embedding, axis=1, keepdims=True)
-        else:
-            normalized_embedding = doc_embedding
-        return normalized_embedding
-
-    def score_query(self, query):
-        """
-        Implementation of the abstract method.
-        """
-        query_embedding = self.get_normalized_embedding(query)
-        return np.dot(self.doc_embeddings, query_embedding[0])
+# class Sent2VecRanker(Ranker):
+#     """
+#     Ranker based on the Sent2Vec model.
+#     """
+#
+#     def __init__(self, corpus):
+#         """
+#         :param corpus: corpus of documents.
+#         """
+#         self.doc_embeddings = []
+#         self.model = sent2vec.Sent2vecModel()
+#         self.model.load_model("sent2vec_model.bin")
+#         for doc in corpus:
+#             self.doc_embeddings.append(self.model.embed_sentence(doc))
+#         self.doc_embeddings = np.concatenate(self.doc_embeddings, axis=0)
+#         # In case that there are zero vectors in the embedding matrix,
+#         # we only normalize the non-zero vectors in the embedding matrix
+#         non_zero_indices = np.logical_not(np.all(self.doc_embeddings == 0, axis=1))
+#         self.doc_embeddings[non_zero_indices] = self.doc_embeddings[non_zero_indices] / np.linalg.norm(
+#             self.doc_embeddings[non_zero_indices], axis=1, keepdims=True)
+#
+#     def get_normalized_embedding(self, doc):
+#         """
+#         Helper method to create the embedding of a document and normalize it.
+#         :param doc: input document.
+#         :return: normalized embedding of the document.
+#         """
+#         doc_embedding = self.model.embed_sentence(doc)
+#         # normalize the query embedding
+#         if not np.all(doc_embedding == 0):
+#             normalized_embedding = doc_embedding / np.linalg.norm(doc_embedding, axis=1, keepdims=True)
+#         else:
+#             normalized_embedding = doc_embedding
+#         return normalized_embedding
+#
+#     def score_query(self, query):
+#         """
+#         Implementation of the abstract method.
+#         """
+#         query_embedding = self.get_normalized_embedding(query)
+#         return np.dot(self.doc_embeddings, query_embedding[0])
 
 
 class HybridRanker(Ranker):
@@ -220,21 +220,21 @@ class FastBm25HybridRanker(HybridRanker):
                               require_tokenize=self.require_tokenize).score_query(query)
 
 
-class Sent2VecHybridRanker(HybridRanker, Sent2VecRanker):
-    def __init__(self, corpus, corpus_filter: CorpusFilter):
-        """
-        :param corpus: corpus of documents.
-        :param corpus_filter: filter of corpus based on keywords.
-        """
-        Sent2VecRanker.__init__(self, corpus)
-        HybridRanker.__init__(self, corpus, corpus_filter)
-
-    def score_selected(self, query, selected_doc_ids):
-        query_embedding = self.get_normalized_embedding(query)
-        return np.dot(self.doc_embeddings[selected_doc_ids, :], query_embedding[0])
-
-    def score_query(self, query):
-        """
-        Implementation of the abstract method.
-        """
-        return HybridRanker.score_query(self, query)
+# class Sent2VecHybridRanker(HybridRanker, Sent2VecRanker):
+#     def __init__(self, corpus, corpus_filter: CorpusFilter):
+#         """
+#         :param corpus: corpus of documents.
+#         :param corpus_filter: filter of corpus based on keywords.
+#         """
+#         Sent2VecRanker.__init__(self, corpus)
+#         HybridRanker.__init__(self, corpus, corpus_filter)
+#
+#     def score_selected(self, query, selected_doc_ids):
+#         query_embedding = self.get_normalized_embedding(query)
+#         return np.dot(self.doc_embeddings[selected_doc_ids, :], query_embedding[0])
+#
+#     def score_query(self, query):
+#         """
+#         Implementation of the abstract method.
+#         """
+#         return HybridRanker.score_query(self, query)
