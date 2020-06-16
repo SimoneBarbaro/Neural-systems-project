@@ -55,11 +55,11 @@ def test_pairing(args):
         queries = results.loc[doc_id]["text"].values
 
         for q in results.loc[doc_id].index:
-            real_query_ids += pairs[(doc_id, q)]
+            real_query_ids += pairs[(doc_id, q)] # Wrong
         corpus = discussions.loc[doc_id]["text"].values
         ranker = get_ranker(args, corpus)
         indexes = ranker.batch_knn_prediction(queries, k=args.k)
-        predictions += [[discussions_index_to_id_mapper[res][-1] for res in index] for index in indexes]
+        predictions += [[discussions_index_to_id_mapper[res][-1] for res in index] for index in indexes] # Wrong
 
     print("M@1 score: {}".format(ml_score(real_query_ids, predictions, L=1)))
     print("M@20 score: {}".format(ml_score(real_query_ids, predictions, L=20)))
