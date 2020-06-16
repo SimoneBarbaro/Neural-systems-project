@@ -81,6 +81,10 @@ def test_retrieval(args):
     predictions = [[discussions_index_to_id_mapper[res] for res in index] for index in indexes]
 
     print("DCG: {}".format(np.array(discounted_cumulative_gain(query_ids, predictions, scores, normalize=True)).mean()))
+    if args.rouge:
+        predictions_text = [[discussions.loc[id]['text'] for id in prediction] for prediction in predictions]
+        scores = rouge_score(queries, predictions_text)
+        print_rouge_score(scores)
 
 
 def main(args):
