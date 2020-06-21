@@ -1,10 +1,12 @@
 import numpy as np
 import argparse
 from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer
-from ranking import Bm25Ranker, FastBM25Ranker, Sent2VecRanker, Sent2VecHybridRanker, Bm25HybridRanker, \
+from ranking import Bm25Ranker, FastBM25Ranker, Bm25HybridRanker, \
     FastBm25HybridRanker
+#Sent2VecRanker, Sent2VecHybridRanker
 from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
-from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve
+from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve, \
+    rouge_score, print_rouge_score
 
 
 def get_tokenizer_fn(tokenizer):
@@ -44,7 +46,7 @@ def get_ranker(args, corpus):
 
 
 def test_pairing(args):
-    #TODO bugs to fix
+    #TODO histogram not working
     results, discussions, pairs = get_part2_datasets(only_pairs=True)
     doc_ids = results.index.unique(0)
     discussions_index_to_id_mapper, discussions_id_to_index_mapper = get_doc_id_mapping(discussions)
@@ -55,11 +57,11 @@ def test_pairing(args):
         queries = results.loc[doc_id]["text"].values
 
         for q in results.loc[doc_id].index:
-            real_query_ids += pairs[(doc_id, q)] # Wrong
+            real_query_ids += [pairs[(doc_id, q)]]
         corpus = discussions.loc[doc_id]["text"].values
         ranker = get_ranker(args, corpus)
         indexes = ranker.batch_knn_prediction(queries, k=args.k)
-        predictions += [[discussions_index_to_id_mapper[res][-1] for res in index] for index in indexes] # Wrong
+        predictions += [[discussions_index_to_id_mapper[res][-1] for res in index] for index in indexes]
 
     print("M@1 score: {}".format(ml_score(real_query_ids, predictions, L=1)))
     print("M@20 score: {}".format(ml_score(real_query_ids, predictions, L=20)))
@@ -79,6 +81,10 @@ def test_retrieval(args):
     predictions = [[discussions_index_to_id_mapper[res] for res in index] for index in indexes]
 
     print("DCG: {}".format(np.array(discounted_cumulative_gain(query_ids, predictions, scores, normalize=True)).mean()))
+    if args.rouge:
+        predictions_text = [[discussions.loc[id]['text'] for id in prediction] for prediction in predictions]
+        scores = rouge_score(queries, predictions_text)
+        print_rouge_score(scores)
 
 
 def main(args):
@@ -99,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument("--tokenizer", type=str, default="SentenceTokenizer",
                         help="tokenizer to use, only some ranker will make use of this parameter",
                         choices=["SentenceTokenizer", "split"])
+    parser.add_argument("--rouge", default=False, action='store_true')
 
     args = parser.parse_args()
 
