@@ -2,8 +2,7 @@ import numpy as np
 import argparse
 from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer
 from ranking import Bm25Ranker, FastBM25Ranker, Bm25HybridRanker, \
-    FastBm25HybridRanker
-#Sent2VecRanker, Sent2VecHybridRanker
+    FastBm25HybridRanker, Sent2VecRanker, Sent2VecHybridRanker
 from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
 from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve, \
     rouge_score, print_rouge_score
