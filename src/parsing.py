@@ -38,9 +38,10 @@ def get_part2_datasets(only_pairs=False):
     if not only_pairs:
         scores = pd.read_csv("../dataset/scores.csv").drop_duplicates()
         scores = scores.set_index(["doc_id_result", "result_id", "doc_id_discussion", "discussion_id"]).sort_index()
-        result_ids = scores.index.to_frame(False)["doc_id_result"].unique()
+        result_ids = scores.index.to_frame(False)[["doc_id_result", "result_id"]].drop_duplicates()
         discussion_ids = scores.index.to_frame(False)["doc_id_discussion"].unique()
-        results = results.loc[result_ids]
+
+        results = results.loc[results.index.isin([row for _, row in result_ids.iterrows()])]
         discussions = discussions.loc[discussion_ids]
         return results, discussions, scores
     else:
