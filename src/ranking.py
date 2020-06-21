@@ -1,6 +1,7 @@
 import numpy as np
 from rank_bm25 import BM25Okapi
 import sent2vec
+import transformers
 from filter import CorpusFilter
 from parsing import get_inverted_index_data
 
@@ -102,20 +103,16 @@ class FastBM25Ranker(Ranker):
         return scores
 
 
-class Sent2VecRanker(Ranker):
-    """
-    Ranker based on the Sent2Vec model.
-    """
+class EmbeddingRanker(Ranker):
 
     def __init__(self, corpus):
         """
         :param corpus: corpus of documents.
         """
         self.doc_embeddings = []
-        self.model = sent2vec.Sent2vecModel()
-        self.model.load_model("sent2vec_model.bin")
+
         for doc in corpus:
-            self.doc_embeddings.append(self.model.embed_sentence(doc))
+            self.doc_embeddings.append(self.get_embeddings(doc))
         self.doc_embeddings = np.concatenate(self.doc_embeddings, axis=0)
         # In case that there are zero vectors in the embedding matrix,
         # we only normalize the non-zero vectors in the embedding matrix
@@ -123,13 +120,16 @@ class Sent2VecRanker(Ranker):
         self.doc_embeddings[non_zero_indices] = self.doc_embeddings[non_zero_indices] / np.linalg.norm(
             self.doc_embeddings[non_zero_indices], axis=1, keepdims=True)
 
+    def get_embeddings(self, doc):
+        raise NotImplementedError
+
     def get_normalized_embedding(self, doc):
         """
         Helper method to create the embedding of a document and normalize it.
         :param doc: input document.
         :return: normalized embedding of the document.
         """
-        doc_embedding = self.model.embed_sentence(doc)
+        doc_embedding = self.get_embeddings(doc)
         # normalize the query embedding
         if not np.all(doc_embedding == 0):
             normalized_embedding = doc_embedding / np.linalg.norm(doc_embedding, axis=1, keepdims=True)
@@ -143,6 +143,32 @@ class Sent2VecRanker(Ranker):
         """
         query_embedding = self.get_normalized_embedding(query)
         return np.dot(self.doc_embeddings, query_embedding[0])
+
+
+class Sent2VecRanker(EmbeddingRanker):
+    """
+    Ranker based on the Sent2Vec model.
+    """
+    def __init__(self, corpus):
+        self.model = sent2vec.Sent2vecModel()
+        self.model.load_model("sent2vec_model.bin")
+        super().__init__(corpus)
+
+    def get_embeddings(self, doc):
+        return self.model.embed_sentence(doc)
+
+
+class BertRanker(EmbeddingRanker):
+    """
+    Ranker based on the Sent2Vec model.
+    """
+    def __init__(self, corpus):
+        self.model = transformers.TFBertModel.from_pretrained('bert-base-uncased').bert
+        self.tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
+        super().__init__(corpus)
+
+    def get_embeddings(self, doc):
+        return self.model(np.array([self.tokenizer.encode(doc, max_length=512)]))[1].numpy()
 
 
 class HybridRanker(Ranker):
