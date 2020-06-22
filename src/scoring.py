@@ -16,7 +16,8 @@ def ml_score(real_query_ids, prediction_ids, L):
     """
     if isinstance(real_query_ids[0], list):
         length = max(map(len, real_query_ids))
-        real_query_ids = np.array([xi + [None] * (length - len(xi)) for xi in real_query_ids])
+        real_query_ids = np.array([xi + [np.nan] * (length - len(xi)) for xi in real_query_ids])
+
     else:
         real_query_ids = np.array(real_query_ids).reshape(1, -1)
 
@@ -32,12 +33,10 @@ def ml_score(real_query_ids, prediction_ids, L):
     assert prediction_ids.shape[0] == real_query_ids.shape[0]
     assert prediction_ids.shape[1] >= L
     return np.mean(
-        [np.sum(np.isin(prediction_ids[i, :L], real_query_ids[i, :])) / min(L, len(real_query_ids[i, :])) for i in
+        [np.sum(np.isin(prediction_ids[i, :L], real_query_ids[i, :])) / min(L, np.sum(~np.isnan(real_query_ids[i, :])))
+         for i in
          range(prediction_ids.shape[0])])
-    """
-    return np.sum([np.isin(prediction_ids[i, :L], real_query_ids[i, :]) for i in range(prediction_ids.shape[0])]) \
-                / np.sum(real_query_ids is not None)
-    """
+
 
 def plot_ml_curve(real_query_ids, prediction_ids, max_l=20):
     """
