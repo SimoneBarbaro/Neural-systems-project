@@ -10,15 +10,16 @@ from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, pl
 
 def get_tokenizer_fn(tokenizer, num_grams):
     if tokenizer == "SentenceTokenizer":
-        tokens = SentenceTokenizer().tokenize
+        tokenizer_fn = SentenceTokenizer().tokenize
     elif tokenizer == "PuctDigitRemoveTokenizer":
-        tokens = PuctDigitRemoveTokenizer().tokenize
+        tokenizer_fn = PuctDigitRemoveTokenizer().tokenize
     elif tokenizer == "split":
-        tokens = lambda x: x.split()
+        tokenizer_fn = lambda x: x.split()
     else:
         raise NotImplementedError("Tokenizer not implemented yet")
     if num_grams > 1:
-        return get_ngrams(tokens, num_grams)
+        return lambda x: get_ngrams(tokenizer_fn(x), num_grams)
+    return tokenizer_fn
 
 
 def get_corpus_filter(corpus, tokenizer_fn, filter_name, num_keywords):
