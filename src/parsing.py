@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 from array import array
+from string import punctuation
 import os
 import nltk
+from nltk import ngrams
 from nltk.tokenize import RegexpTokenizer
 from nltk.stem.snowball import SnowballStemmer
 from functools import lru_cache
@@ -74,6 +76,29 @@ class SentenceTokenizer:
         wlist = self.tokenizer.tokenize(sen)
         sen = " ".join([self.stem(w.lower()) for w in wlist])
         return sen.split()
+
+
+class PuctDigitRemoveTokenizer:
+    def __init__(self):
+        self.punc_remover = str.maketrans('','',punctuation)
+        self.stemmer = SnowballStemmer("english")
+        self.general_stopwords = set(stopwords.words('english'))
+
+    @lru_cache(100000)
+    def stem(self, w):
+        return self.stemmer.stem(w)
+
+    def tokenize(self, sen):
+        return [self.stem(w) if not w.isdigit() else '#' for w in sen.lower().translate(self.punc_remover).split() if
+                w not in self.general_stopwords]
+
+
+def get_ngrams(tokens, len_ngrams):
+    grams = []
+    for n in range(1, len_ngrams):
+        grams += list(ngrams(tokens, n))
+
+    return [" ".join(g) for g in grams]
 
 
 def add_unigram(inv_idx, index, doc_unigrams):
