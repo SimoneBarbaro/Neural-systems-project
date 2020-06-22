@@ -1,8 +1,7 @@
 import numpy as np
 import argparse
 from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer, PuctDigitRemoveTokenizer, get_ngrams
-from ranking import Bm25Ranker, FastBM25Ranker, Bm25HybridRanker, \
-    FastBm25HybridRanker, Sent2VecRanker, Sent2VecHybridRanker
+from ranking import *
 from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
 from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, plot_ml_curve, \
     rouge_score, print_rouge_score
@@ -37,7 +36,9 @@ def get_ranker(args, corpus):
     elif args.ranker == "FastBM25":
         ranker = FastBM25Ranker(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "Sent2Vec":
-        ranker = Sent2VecRanker(corpus)
+        ranker = Sent2VecRanker(corpus, split=args.split)
+    elif args.ranker == "Bert":
+        ranker = BertRanker(corpus, split=args.split)
     elif args.ranker == "BM25Hybrid":
         ranker = Bm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
                                                             args.filter, args.filter_num_keywords),
@@ -48,10 +49,17 @@ def get_ranker(args, corpus):
                                                         args.filter, args.filter_num_keywords),
                                       get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "Sent2VecHybrid":
-        ranker = Sent2VecHybridRanker(corpus,
-                                      get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
-                                                        args.filter,
-                                                        args.filter_num_keywords))
+        ranker = EmbeddingHybridRanker(corpus,
+                                       get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
+                                                         args.filter,
+                                                         args.filter_num_keywords),
+                                       Sent2VecRanker(corpus, split=args.split))
+    elif args.ranker == "BertHybrid":
+        ranker = EmbeddingHybridRanker(corpus,
+                                       get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
+                                                         args.filter,
+                                                         args.filter_num_keywords),
+                                       BertRanker(corpus, split=args.split))
     else:
         raise NotImplementedError("Ranker not implemented yet")
     return ranker
@@ -111,7 +119,8 @@ if __name__ == '__main__':
     parser.add_argument("--mode", type=str, default="retrieval", help="testing mode", choices=["retrieval", "pairing"])
     parser.add_argument("--k", type=int, default=20, help="k for knn prediction")
     parser.add_argument("--ranker", type=str, default="FastBM25", help="ranker model",
-                        choices=["BM25", "FastBM25", "Sent2Vec", "BM25Hybrid", "FastBM25Hybrid", "Sent2VecHybrid"])
+                        choices=["BM25", "FastBM25", "Sent2Vec", "Bert",
+                                 "BM25Hybrid", "FastBM25Hybrid", "Sent2VecHybrid", "BertHybrid"])
     parser.add_argument("--filter", type=str, default=None, help="filtering method, None if not using hybrid ranker",
                         choices=[None, "and", "or"])
     parser.add_argument("--filter_num_keywords", type=int, default=3, help="number of keywords for filtering method")
@@ -119,6 +128,8 @@ if __name__ == '__main__':
                         help="tokenizer to use, only some ranker will make use of this parameter",
                         choices=["SentenceTokenizer", "PuctDigitRemoveTokenizer", "split"])
     parser.add_argument("--num_grams", type=int, default=1, help="ngrams for token based rankers")
+    parser.add_argument("--split", type=bool, default=False,
+                        help="Whether to split document sentences for embedding based rankers")
     parser.add_argument("--rouge", default=False, action='store_true')
 
     args = parser.parse_args()
