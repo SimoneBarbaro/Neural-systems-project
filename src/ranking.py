@@ -1,5 +1,6 @@
 import numpy as np
 from rank_bm25 import BM25Okapi
+from nltk import sent_tokenize
 import sent2vec
 import transformers
 from filter import CorpusFilter
@@ -105,10 +106,11 @@ class FastBM25Ranker(Ranker):
 
 class EmbeddingRanker(Ranker):
 
-    def __init__(self, corpus):
+    def __init__(self, corpus, split=False):
         """
         :param corpus: corpus of documents.
         """
+        self.split = split
         self.doc_embeddings = []
 
         for doc in corpus:
@@ -120,8 +122,14 @@ class EmbeddingRanker(Ranker):
         self.doc_embeddings[non_zero_indices] = self.doc_embeddings[non_zero_indices] / np.linalg.norm(
             self.doc_embeddings[non_zero_indices], axis=1, keepdims=True)
 
-    def get_embeddings(self, doc):
+    def embedding_method(self, doc):
         raise NotImplementedError
+
+    def get_embeddings(self, doc):
+        if self.split:
+            sentences = sent_tokenize(doc)
+            return np.mean([self.embedding_method(s) for s in sentences])
+        return self.embedding_method(doc)
 
     def get_normalized_embedding(self, doc):
         """
@@ -149,10 +157,10 @@ class Sent2VecRanker(EmbeddingRanker):
     """
     Ranker based on the Sent2Vec model.
     """
-    def __init__(self, corpus):
+    def __init__(self, corpus, split=False):
         self.model = sent2vec.Sent2vecModel()
         self.model.load_model("sent2vec_model.bin")
-        super().__init__(corpus)
+        super().__init__(corpus, split=split)
 
     def get_embeddings(self, doc):
         return self.model.embed_sentence(doc)
@@ -162,10 +170,10 @@ class BertRanker(EmbeddingRanker):
     """
     Ranker based on the Sent2Vec model.
     """
-    def __init__(self, corpus):
+    def __init__(self, corpus, split=False):
         self.model = transformers.TFBertModel.from_pretrained('bert-base-uncased').bert
         self.tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
-        super().__init__(corpus)
+        super().__init__(corpus, split=split)
 
     def get_embeddings(self, doc):
         return self.model(np.array([self.tokenizer.encode(doc, max_length=512)]))[1].numpy()
@@ -246,21 +254,21 @@ class FastBm25HybridRanker(HybridRanker):
                               require_tokenize=self.require_tokenize).score_query(query)
 
 
-class Sent2VecHybridRanker(HybridRanker, Sent2VecRanker):
-    def __init__(self, corpus, corpus_filter: CorpusFilter):
+class EmbeddingHybridRanker(HybridRanker):
+    def __init__(self, corpus, corpus_filter: CorpusFilter, ranker: EmbeddingRanker):
         """
         :param corpus: corpus of documents.
         :param corpus_filter: filter of corpus based on keywords.
         """
-        Sent2VecRanker.__init__(self, corpus)
-        HybridRanker.__init__(self, corpus, corpus_filter)
+        super().__init__(corpus, corpus_filter)
+        self.ranker = ranker
 
     def score_selected(self, query, selected_doc_ids):
-        query_embedding = self.get_normalized_embedding(query)
-        return np.dot(self.doc_embeddings[selected_doc_ids, :], query_embedding[0])
+        query_embedding = self.ranker.get_normalized_embedding(query)
+        return np.dot(self.ranker.doc_embeddings[selected_doc_ids, :], query_embedding[0])
 
     def score_query(self, query):
         """
         Implementation of the abstract method.
         """
-        return HybridRanker.score_query(self, query)
+        return super().score_query(query)
