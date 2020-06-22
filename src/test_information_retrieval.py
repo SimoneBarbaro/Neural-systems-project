@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument("--split", type=bool, default=False,
                         help="Whether to split document sentences for embedding based rankers")
     parser.add_argument("--rouge", default=False, action='store_true')
-    parser.add_argument("--examples", type=int, default=0, action='number of examples to show')
+    parser.add_argument("--examples", type=int, default=0, help='number of examples to show')
 
     args = parser.parse_args()
 
