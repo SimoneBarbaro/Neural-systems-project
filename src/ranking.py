@@ -1,11 +1,13 @@
 import numpy as np
 from rank_bm25 import BM25Okapi
+import nltk
 from nltk import sent_tokenize
 import sent2vec
 import transformers
 from filter import CorpusFilter
 from parsing import get_inverted_index_data
 
+nltk.download('punkt')
 
 class Ranker:
     """
@@ -128,7 +130,7 @@ class EmbeddingRanker(Ranker):
     def get_embeddings(self, doc):
         if self.split:
             sentences = sent_tokenize(doc)
-            return np.mean([self.embedding_method(s) for s in sentences])
+            return np.mean([self.embedding_method(s) for s in sentences], axis=0)
         return self.embedding_method(doc)
 
     def get_normalized_embedding(self, doc):
@@ -162,7 +164,7 @@ class Sent2VecRanker(EmbeddingRanker):
         self.model.load_model("sent2vec_model.bin")
         super().__init__(corpus, split=split)
 
-    def get_embeddings(self, doc):
+    def embedding_method(self, doc):
         return self.model.embed_sentence(doc)
 
 
@@ -175,7 +177,7 @@ class BertRanker(EmbeddingRanker):
         self.tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
         super().__init__(corpus, split=split)
 
-    def get_embeddings(self, doc):
+    def embedding_method(self, doc):
         return self.model(np.array([self.tokenizer.encode(doc, max_length=512)]))[1].numpy()
 
 
