@@ -1,6 +1,6 @@
 import numpy as np
 import argparse
-from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer
+from parsing import get_part2_datasets, get_doc_id_mapping, SentenceTokenizer, PuctDigitRemoveTokenizer, get_ngrams
 from ranking import Bm25Ranker, FastBM25Ranker, Bm25HybridRanker, \
     FastBm25HybridRanker, Sent2VecRanker, Sent2VecHybridRanker
 from filter import CorpusFilterBuilder, OrFilterStrategy, AndFilterStrategy
@@ -8,15 +8,21 @@ from scoring import discounted_cumulative_gain, ml_score, plot_ml_histograms, pl
     rouge_score, print_rouge_score
 
 
-def get_tokenizer_fn(tokenizer):
+def get_tokenizer_fn(tokenizer, num_grams):
     if tokenizer == "SentenceTokenizer":
-        return SentenceTokenizer().tokenize
+        tokens = SentenceTokenizer().tokenize
+    elif tokenizer == "PuctDigitRemoveTokenizer":
+        tokens = PuctDigitRemoveTokenizer().tokenize
     elif tokenizer == "split":
-        return lambda x: x.split()
+        tokens = lambda x: x.split()
+    else:
+        raise NotImplementedError("Tokenizer not implemented yet")
+    if num_grams > 1:
+        return get_ngrams(tokens, num_grams)
 
 
-def get_corpus_filter(corpus, tokenizer_fn, filter_name):
-    builder = CorpusFilterBuilder(corpus, tokenizer_fn).set_k_keyword_selector(3)
+def get_corpus_filter(corpus, tokenizer_fn, filter_name, num_keywords):
+    builder = CorpusFilterBuilder(corpus, tokenizer_fn).set_k_keyword_selector(num_keywords)
     if filter_name == "or":
         builder.set_filter_strategy(OrFilterStrategy())
     elif filter_name == "and":
@@ -26,26 +32,32 @@ def get_corpus_filter(corpus, tokenizer_fn, filter_name):
 
 def get_ranker(args, corpus):
     if args.ranker == "BM25":
-        ranker = Bm25Ranker(corpus, get_tokenizer_fn(args.tokenizer))
+        ranker = Bm25Ranker(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "FastBM25":
-        ranker = FastBM25Ranker(corpus, get_tokenizer_fn(args.tokenizer))
+        ranker = FastBM25Ranker(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "Sent2Vec":
         ranker = Sent2VecRanker(corpus)
     elif args.ranker == "BM25Hybrid":
-        ranker = Bm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter),
-                                  get_tokenizer_fn(args.tokenizer))
+        ranker = Bm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
+                                                            args.filter, args.filter_num_keywords),
+                                  get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "FastBM25Hybrid":
-        ranker = FastBm25HybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter),
-                                      get_tokenizer_fn(args.tokenizer))
+        ranker = FastBm25HybridRanker(corpus,
+                                      get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
+                                                        args.filter, args.filter_num_keywords),
+                                      get_tokenizer_fn(args.tokenizer, args.num_grams))
     elif args.ranker == "Sent2VecHybrid":
-        ranker = Sent2VecHybridRanker(corpus, get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer), args.filter))
+        ranker = Sent2VecHybridRanker(corpus,
+                                      get_corpus_filter(corpus, get_tokenizer_fn(args.tokenizer, args.num_grams),
+                                                        args.filter,
+                                                        args.filter_num_keywords))
     else:
         raise NotImplementedError("Ranker not implemented yet")
     return ranker
 
 
 def test_pairing(args):
-    #TODO histogram not working
+    # TODO histogram not working
     results, discussions, pairs = get_part2_datasets(only_pairs=True)
     doc_ids = results.index.unique(0)
     discussions_index_to_id_mapper, discussions_id_to_index_mapper = get_doc_id_mapping(discussions)
@@ -101,9 +113,11 @@ if __name__ == '__main__':
                         choices=["BM25", "FastBM25", "Sent2Vec", "BM25Hybrid", "FastBM25Hybrid", "Sent2VecHybrid"])
     parser.add_argument("--filter", type=str, default=None, help="filtering method, None if not using hybrid ranker",
                         choices=[None, "and", "or"])
+    parser.add_argument("--filter_num_keywords", type=int, default=3, help="number of keywords for filtering method")
     parser.add_argument("--tokenizer", type=str, default="SentenceTokenizer",
                         help="tokenizer to use, only some ranker will make use of this parameter",
-                        choices=["SentenceTokenizer", "split"])
+                        choices=["SentenceTokenizer", "PuctDigitRemoveTokenizer", "split"])
+    parser.add_argument("--num_grams", type=int, default=1, help="ngrams for token based rankers")
     parser.add_argument("--rouge", default=False, action='store_true')
 
     args = parser.parse_args()
