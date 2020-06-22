@@ -100,6 +100,32 @@ def test_retrieval(args):
     indexes = ranker.batch_knn_prediction(queries, k=args.k)
     predictions = [[discussions_index_to_id_mapper[res] for res in index] for index in indexes]
 
+    dcg = np.array(discounted_cumulative_gain(query_ids, predictions, scores, normalize=True))
+    dcg_idx = np.argsort(dcg)
+
+    if args.examples > 0:
+        print("good examples:")
+        for i in range(1, args.examples + 1):
+            ind = dcg_idx[-i]
+            print("query: {}".format(query_ids[ind]))
+            print("dcg: {}".format(dcg[ind]))
+            # print(queries[ind])
+            print("predictions:")
+            for pred in predictions[ind]:
+                print("\t{}".format(pred))
+
+                print("\tOur score: {}".format(scores["score"].get(query_ids[ind] + pred, 0)))
+        print("bad examples:")
+        for i in range(args.examples):
+            ind = dcg_idx[i]
+            print("query: {}".format(query_ids[ind]))
+            print("dcg: {}".format(dcg[ind]))
+            # print(queries[ind])
+            print("predictions:")
+            for pred in predictions[ind]:
+                print("\t{}".format(pred))
+                print("\tOur score: {}".format(scores["score"].get(query_ids[ind] + pred, 0)))
+
     print("DCG: {}".format(np.array(discounted_cumulative_gain(query_ids, predictions, scores, normalize=True)).mean()))
     if args.rouge:
         predictions_text = [[discussions.loc[id]['text'] for id in prediction] for prediction in predictions]
@@ -116,7 +142,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default="retrieval", help="testing mode", choices=["retrieval", "pairing"])
+    parser.add_argument("--mode", type=str, default="retrieval", help="testing mode", choices=["retrieval", "examples", "pairing"])
     parser.add_argument("--k", type=int, default=20, help="k for knn prediction")
     parser.add_argument("--ranker", type=str, default="FastBM25", help="ranker model",
                         choices=["BM25", "FastBM25", "Sent2Vec", "Bert",
@@ -131,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument("--split", type=bool, default=False,
                         help="Whether to split document sentences for embedding based rankers")
     parser.add_argument("--rouge", default=False, action='store_true')
+    parser.add_argument("--examples", type=int, default=0, action='number of examples to show')
 
     args = parser.parse_args()
 
