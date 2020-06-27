@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 from sklearn.metrics import dcg_score, ndcg_score
 import rouge
@@ -55,7 +57,7 @@ def plot_ml_curve(real_query_ids, prediction_ids, max_l=20):
     plt.title("M@L score curve")
     plt.xticks(np.arange(1, max_l + 1))
     plt.show()
-
+    plt.savefig('pic')
 
 def discounted_cumulative_gain(query_ids, predicted_results, scores, normalize=True):
     dcg = []
