@@ -2,5 +2,5 @@
 src/__pycache__
 src/sent2vec_model.bin
 src/dataset.txt
-.idea
+.idea/
 dataset/*.csv
