@@ -2,7 +2,7 @@
 
 ## Usage
 
-First, load the dataset in the dataset folder and unzip it.
+First, load the dataset in the dataset folder and unzip it. Then, you should save the Sent2Vec model to src/sent2vec_model.bin. Finally, ensure all libraries in requirements.txt are installed.
 
 To run the evaluation, execute src/test_information_retrieval.py. The parameters for this file are explained below:
     
