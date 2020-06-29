@@ -29,9 +29,25 @@
 
 \chapter{Organization of project}
 	\section{Time schedule} 
-	\section{Goal of the project}
-	\section{Task description}	
-
+	
+	\section{Objects}
+			
+		\begin{figure}
+			\centering
+			\includegraphics[width=\linewidth]{figure/Object}
+			\caption{Project Objects}
+			\label{fig:object}
+		\end{figure}
+			
+		The overall goal of the project is to explore natural language processing methods for retrieving scientific content based on a query and potential keywords of interest. We study information retrieval methods and build our search engine step by step. And then we evaluate the performance on a specific dataset.
+		We start with basic Sent2Vec + nearest neighbor search. We add keyword Boolean filtering processing into the search engine. And then we consider picking up more than one keywords and using logic strategy to get a subset of corpus so that we have Sent2VecHybrid model. Finally, more hybrid versions of other models are implemented and evaluated.
+		
+	\section{Task Introduction}	
+	
+		There are two parts of our project.
+		In Part A, we implement and experiment with the methods mentioned above and then evaluate the retrieval performance of various methods on a reduced dataset.
+		In part B, we use hybrid search engines we make in part A in more advanced information retrieval tasks. We build a new dataset based on papers from PMC-OA dataset and apply our hybrid search in the dataset. Using M-score, ROUGE score, and DCG score to evaluate and compare the performance of the search engines. Furthermore, some new ranking models are added into our system (like Bert, BertHybrid, FastBM25, etc.).
+		
 \chapter{Text Retrieval Methods Implementation}			
 
 %	\section{Implementation procedure}
@@ -60,20 +76,61 @@
 	\section{Ranker / Retrieving Models}
 	Several rankers or retrieving methods (models) have been implemented concluding BM25, FastBM25, Sent2Vec, BERT (Bidirectional Encoder Representations from Transformers) and the corresponding hybrid models which combine the existing methods with keyword selection and Boolean filtering.
 		
-		\subsection{Traditional keyword-based information retrieval methods}
-		
+		\subsection{Traditional keyword-based information retrieval methods}		
+			\subsubsection{TF-IDF}		
+			
+				TF-IDF (term frequency-Inverse Document Frequency) is a common weighting technique in information retrieval and data mining. It is often used to mine keywords in the article, and the algorithm is simple and efficient, which is often used by the industry for the initial textual data cleansing. TFIDF reflects how important a word is to a document in a collection or corpus. The TFIDF value increases proportionally to the number of times a word appears in the document and is decreased by the number of documents in the corpus containing the word, which helps to adjust for the fact that some words appear more frequently in general.\\
+				
+				Term frequency
+				$$\operatorname{tf}(t, d)=0.5+0.5 \cdot \frac{f_{t, d}}{\max \left\{f_{t^{\prime}, d}: t^{\prime} \in d\right\}}$$
+				where $f_{t,d}$ is the number of times that term $t$ occurs in document $d$. 
+				
+				Inverse Document Frequency
+				$$ idf(t,D) = log \frac{N}{|\{d \in D:T \in d\}|} $$
+				where $N$ is total number of documents in the corpus, $|\{d \in D:T \in d\}|$ is number of documents where the term $t$ appears.
+					
+				Term frequency-Inverse Document Frequency
+				$$TFIDF(t,d,D) = tf(t,d) \cdot idf(t,D)$$	
+
 			\subsubsection{BM25}
 			
+				Okapi BM25 (Best Matching) is a typical algorithm in information retrieval, which is used by search engines to compute the estimated relevance of documents to a given search query. The idea is come up by Stephen E. Robertson, Karen Spärck Jones when they built a probabilistic retrieval framework in the 1970s and 1980s.
+				BM25 is a bag-of-words retrieval ranking function which computes the occurrence of query terms in each document and then ranks a set of documents, ignoring their proximity in the document. It is a set of ranking functions with slightly different parameters and components. 
+				Given a query $Q$, containing keywords $q_1,...q_n$, the BM25 score of of a document $D$ is:
+				$$ score(D,Q) = \sum_{i=1}^{n} IDF(q_i)\cdot \frac{f(q_i,D)\cdot (k_l+1)}{f(q_i,D)+k_l \cdot (1-b+b \cdot \frac{|D|}{avgdl})}$$
+				
+				where $f(q_i,D)$ is $q_i$'s term frequency in the document D, $|D|$ is the length of the document D in words, and $avgdl$ is the average document length in the text collection from which documents are drawn. $k_l$ and $b$ are free parameters, usually chosen, in absence of an advanced optimization, as $k_l\in [1.2,2.0]$ and $b$ = 0.75. $IDF(q_i)$ is the IDF (inverse document frequency) weight of the query term $q_i$. It is usually computed as:
+				$$IDF(q_i)=log \frac{N-n(q_i)+0.5}{n(q_i)+0.5}$$
+				
+				where N is the total number of documents in the collection, and $n(q_i)$ is the number of documents containing $q_i$.
+				
+				It can be seen from the formula that BM25 is an improved algorithm based on TFIDF, which adds a constant $k_l$ in TF to limit the growth of TF. BM25 also introduces the concept of average document length, the influence of a single document length on correlation is related to its ratio to the average length.In the TF formula of BM25, two other parameters are introduced: $avgdl$ and $b$. $b$ is a constant, and what it does is it specifies how much $avgdl$ affects the score.
+				
 			\subsubsection{Fast BM25}
 			
+				BM25F or Fast-BM25 is an improved algorithm of typical BM25. BM25 considers documents as a whole when calculating relevancy. However, with the development of search technology, documents are gradually replaced by structural data.Such as web pages are likely to be cut into the title, content, subject headings, such as field, the field's contribution to the article topics not same, so the weight needs to be adjusted, BM25 did not consider this, BM25F makes some improvements, in which the document is divided into individual, so BM25F is score in each word in each field of weighted sum.
+				
 		\subsection{Nearest neighbor search on text embedding}
 		
 			\subsubsection{Sent2Vec}
 			
+				Sent2Vec uses a simple but efficient unsupervised objective to train distributed representations of sentences, which allows to compose sentence embeddings using word vectors along with n-gram embeddings, simultaneously training composition and the embedding vectors themselves.
+				The model can be seen as a natural extension of the word-contexts from C-BOW model to a large sentence context, with the sentence words being specifically optimized towards additive combination over the sentence, by means of the unsupervised objective function.
+				The sentence embedding can be presented as:
+				$$ v_s = \frac{1}{|R(S)|} V_{R(S)\sum_{w\in R(S)}v_w} $$
+				where $S$ is the sentence, $R(S)$ is the list of n-grams present in $S$, $w$ is every word in the vocabulary, $v_w$ is the word embedding.
+				
+			
 			\subsubsection{BERT - Bidirectional Encoder Representations from Transformers}
 			
+				Bidirectional Encoder Representations from Transformers (BERT) is a technique developed by Google for Natural Language Processing pre-training. BERT performed well in natural language understanding tasks. BERT originates from pre-training contextual representations including Semi-supervised Sequence Learning, Generative Pre-Training, ELMo, and ULMFit. Different from previous models, BERT is a deeply bidirectional, unsupervised language representation, pre-trained using only a plain text corpus. Context-free models like word2vec or GloVe generate a single word embedding representation for each word in the vocabulary, where BERT takes into account the context for each occurrence of a given word occurring each time.
+				
 		\subsection{Hybrid search}
-		
+				
+				A combination of traditional keyword-based methods and text-embedding based methods. 
+				A strategy we use in the project is keyword boolean filtering + embedding based ranking.
+				
+				
 	\section{Prediction Evaluation}
 	
 		Three evaluation methods have been implemented for model's prediction evaluation.
@@ -506,9 +563,7 @@
 				\textbf{The Boolean logic filter function} ("and" filter and "or" filter) has no effect on non-hybrid models.
 				By comparing the Bert Hybrid model performance, model with "or" filter function, its' performance is categorized as "middle M@L score", model with "and" filter is categorized as "low M@L score". Similar tendency is also discovered in other hybrid models. It can be concluded that hybrid model using "or" logic filter has better performance compared with hybrid model with "and" filter.
 				
-				\textbf{Tokenizors} (SentenceTokenizer,  PuctDigitRemoveTokenizer, split) used for filtering the keywords is found has no big effect in influencing the models behavior as can be seen from figure \ref{fig: pairingtokenizoreffect}.
-				
-				\textbf{Higher number of keywords} is supposed to lead to a better prediction which is correlated to the discovery in Task A.
+				\textbf{Tokenizers} (SentenceTokenizer,  PuctDigitRemoveTokenizer, split) used for filtering the keywords is found has no big effect in influencing the models behavior as can be seen from figure \ref{fig: pairingtokenizoreffect}.					
 				
 			
 		\subsubsection{Retrieving Task}
