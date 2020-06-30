@@ -1,0 +1,12 @@
+\begin{abstract}
+  
+  In this project, different methods (models) like BM25, FastBM25, Sent2Vec, Bert and their hybrid versions are implemented for different text retrieving tasks with different size of database with or without human rating scores. The text retrieving performance is evaluated with different matrices concluding M@L scores, ROUGE scores and NDCG scores.
+  
+  It is found that based on size of dataset, M@20 can better indicating model performance on small database.
+  NDCG scores can better indicate the model performance given a big dataset and when human scoring is involved.
+  ROUGE-2 score can also be a good reference for model performance.
+  
+  BM25 and FastBM25 model (Faster version of BM25) is found to have the best text retrieving performance compared with other models.
+  The hybrid version of all the models seems to have worse performance compared with the un-hybrid version.
+  If the model is "hybrided" with different keyword filtering strategy, the "or" keyword filtering strategy seems to perform better in the case of big dataset base and "and" keyword filtering strategy performs better in the case of small dataset base (around 1000 dataset).
+\end{abstract}
